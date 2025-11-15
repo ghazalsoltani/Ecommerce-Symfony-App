@@ -23,3 +23,24 @@
 /public/assets/
 /assets/vendor/
 ###< symfony/asset-mapper ###
+
+###> IDE ###
+.idea/
+.vscode/
+###< IDE ###
+
+###> OS ###
+.DS_Store
+Thumbs.db
+###< OS ###
+
+###> Node ###
+/node_modules/
+/public/build/
+npm-debug.log
+yarn-error.log
+###< Node ###
+
+###> Uploads ###
+/public/uploads/
+###< Uploads ###
