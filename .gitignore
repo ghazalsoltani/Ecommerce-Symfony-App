@@ -44,3 +44,9 @@ yarn-error.log
 ###> Uploads ###
 /public/uploads/
 ###< Uploads ###
+
+#SQL backups
+*.sql
+
+#Test files
+public/dbtest.php
