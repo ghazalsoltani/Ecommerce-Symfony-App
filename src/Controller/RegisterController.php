@@ -43,7 +43,7 @@ class RegisterController extends AbstractController
             ];
             $mail->send($user->getEmail(),$user->getFirstname().' '.$user->getLastname(), 'la boutique Française','welcome.html', $vars);
 
-            return $this->redirectToRoute('app-login');
+            return $this->redirectToRoute('app_login');
         }
         return $this->render('register/index.html.twig', [
             'registerForm' => $form->createView()

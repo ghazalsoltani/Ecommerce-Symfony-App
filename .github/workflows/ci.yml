@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  tests:
+    name: Tests (PHP ${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: laboutiquefrancaise_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    strategy:
+      matrix:
+        php-version: ['8.2']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, opcache, zip
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Create test database
+        run: |
+          php bin/console doctrine:database:create --env=test --if-not-exists
+          php bin/console doctrine:schema:create --env=test
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/laboutiquefrancaise_test
+
+      - name: Run PHPUnit tests
+        run: php bin/phpunit --testdox
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/laboutiquefrancaise_test
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Check Symfony requirements
+        run: php bin/console about --env=prod || true
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Check for security vulnerabilities
+        run: composer audit
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t laboutiquefrancaise-php -f docker/php/dockerfile .
+
+      - name: Verify Docker Compose config
+        run: docker compose config
