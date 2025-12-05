@@ -2,12 +2,12 @@
 
 > A modern e-commerce platform built with Symfony 7, fully Dockerized for seamless development and deployment.
 
+[![CI](https://github.com/ghazalsoltani/Ecommerce-Symfony-App/actions/workflows/ci.yml/badge.svg)](https://github.com/ghazalsoltani/laboutiquefrancaise/actions/workflows/ci.yml)
 [![Symfony](https://img.shields.io/badge/Symfony-7.x-000000?style=flat&logo=symfony)](https://symfony.com)
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=flat&logo=php&logoColor=white)](https://php.net)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat&logo=mysql&logoColor=white)](https://mysql.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker&logoColor=white)](https://docker.com)
 [![Stripe](https://img.shields.io/badge/Stripe-Integrated-008CDD?style=flat&logo=stripe&logoColor=white)](https://stripe.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
@@ -23,6 +23,7 @@
 - [Project Structure](#-project-structure)
 - [Configuration](#-configuration)
 - [Testing](#-testing)
+- [CI/CD](#-cicd)
 - [Author](#-author)
 
 ---
@@ -73,6 +74,7 @@ The codebase follows Symfony best practices: service-oriented architecture, depe
 - CSRF protection on all forms
 - Token-based password reset flow
 - Secure session handling
+- Regular security audits via Composer
 
 ---
 
@@ -80,7 +82,7 @@ The codebase follows Symfony best practices: service-oriented architecture, depe
 
 | Category | Technology |
 |----------|------------|
-| **Backend** | Symfony 7, PHP 8.2 |
+| **Backend** | Symfony 7.1, PHP 8.2 |
 | **Database** | MySQL 8.0 |
 | **Frontend** | Twig, Bootstrap 5 |
 | **Admin** | EasyAdmin 4 |
@@ -90,40 +92,8 @@ The codebase follows Symfony best practices: service-oriented architecture, depe
 | **Build Tools** | Webpack Encore |
 | **Containerization** | Docker, Docker Compose |
 | **Web Server** | Nginx + PHP-FPM |
-
----
-
-## 🏗 Architecture
-
-### Application Layers
-
-```
-Request → Controller → Service → Repository → Database
-              ↓
-           Mailer ←→ Mailjet
-              ↓
-         Stripe API
-```
-
-| Layer | Responsibility |
-|-------|----------------|
-| **Controllers** | Handle HTTP requests, minimal logic |
-| **Services** | Business logic (Cart, Mail, Stripe, Order) |
-| **Repositories** | Encapsulated database queries |
-| **Forms + Validators** | Input handling and validation |
-| **Event Subscribers** | Cross-cutting concerns |
-| **Twig** | Presentation layer with reusable components |
-
-### Data Model
-
-```
-User 1───* Address
-User 1───* Order 1───* OrderDetails *───1 Product
-Product *───1 Category
-Order *───1 Carrier
-User 1───* Wishlist *───1 Product
-Header (Homepage banners)
-```
+| **CI/CD** | GitHub Actions |
+| **Testing** | PHPUnit 9.6 |
 
 ---
 
@@ -236,7 +206,7 @@ docker compose exec database sh -c "mysql -u root laboutiquefrancaise < /backup.
 
 ```bash
 # Clone repository
-git clone https://github.com/ghazalsoltani/laboutiquefrancaise.git
+git clone https://github.com/ghazalsoltani/Ecommerce-Symfony-App.git
 cd laboutiquefrancaise
 
 # Install PHP dependencies
@@ -286,16 +256,95 @@ MAILJET_SECRET_KEY=xxx
 
 ## 🧪 Testing
 
+The project includes a comprehensive test suite with unit and functional tests.
+
+### Test Structure
+
+```
+tests/
+├── ProductTest.php        # Unit tests for Product entity
+├── CartTest.php           # Unit tests for Cart service (6 tests)
+├── HomeControllerTest.php # Functional tests for homepage
+└── RegisterUserTest.php   # Functional tests for user registration
+```
+
+### Running Tests
+
 ```bash
 # Run all tests
 php bin/phpunit
 
-# Run specific test suites
-php bin/phpunit --testsuite=unit
-php bin/phpunit --testsuite=functional
+# Run with verbose output
+php bin/phpunit --testdox
+
+# Run specific test file
+php bin/phpunit tests/CartTest.php
 
 # With Docker
 docker compose exec php php bin/phpunit
+```
+
+### Test Database Setup
+
+Tests use a separate database to avoid affecting development data:
+
+```bash
+# Create test database
+php bin/console doctrine:database:create --env=test
+php bin/console doctrine:schema:create --env=test
+```
+
+### Current Test Coverage
+
+| Test Suite | Tests | Assertions | Status |
+|------------|-------|------------|--------|
+| ProductTest | 2 | 2 | ✅ Pass |
+| CartTest | 6 | 12 | ✅ Pass |
+| HomeControllerTest | 9 | 15 | ✅ Pass |
+| RegisterUserTest | 1 | 1 | ✅ Pass |
+| **Total** | **18** | **30** | ✅ **All Pass** |
+
+---
+
+## 🔄 CI/CD
+
+The project uses GitHub Actions for continuous integration and deployment verification.
+
+### Pipeline Overview
+
+The CI pipeline runs on every push to `main` and on pull requests, executing three parallel jobs:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   GitHub Actions CI                      │
+│                                                          │
+│  ┌──────────┐    ┌──────────────┐    ┌──────────────┐  │
+│  │  Tests   │    │ Code Quality │    │ Docker Build │  │
+│  │          │    │              │    │              │  │
+│  │ PHPUnit  │    │  Validate    │    │  Build PHP   │  │
+│  │ + MySQL  │    │  Security    │    │    Image     │  │
+│  └──────────┘    └──────────────┘    └──────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Jobs Description
+
+| Job | Purpose | Key Steps |
+|-----|---------|-----------|
+| **tests** | Run PHPUnit test suite | Setup PHP 8.2, MySQL service, install deps, run tests |
+| **code-quality** | Validate code integrity | Composer validate, Symfony requirements check |
+| **docker-build** | Verify Docker configuration | Build PHP image, validate compose config |
+
+### Workflow File
+
+Located at `.github/workflows/ci.yml`
+
+### Badge
+
+Add this badge to track CI status:
+
+```markdown
+[![CI](https://github.com/ghazalsoltani/laboutiquefrancaise/actions/workflows/ci.yml/badge.svg)](https://github.com/ghazalsoltani/laboutiquefrancaise/actions/workflows/ci.yml)
 ```
 
 ---
@@ -335,10 +384,3 @@ docker compose exec php php bin/phpunit
 
 [![GitHub](https://img.shields.io/badge/GitHub-ghazalsoltani-181717?style=flat&logo=github)](https://github.com/ghazalsoltani)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat&logo=linkedin)](https://linkedin.com/in/ghazalsoltani)
-
----
-
-
-<p align="center">
-  Made with ❤️ and Symfony
-</p>
