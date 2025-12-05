@@ -1,4 +1,6 @@
 {
+    "name": "ghazalsoltani/laboutiquefrancaise",
+    "description": "E-commerce Symfony application",
     "type": "project",
     "license": "proprietary",
     "minimum-stability": "stable",
