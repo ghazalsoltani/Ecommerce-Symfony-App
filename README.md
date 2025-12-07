@@ -23,7 +23,6 @@
   - [Traditional Setup](#-traditional-setup)
 - [Async Processing](#-async-processing)
 - [CI/CD Pipeline](#-cicd-pipeline)
-- [Project Structure](#-project-structure)
 - [Configuration](#-configuration)
 - [Testing](#-testing)
 - [Author](#-author)
