@@ -3,12 +3,14 @@
 namespace App\Controller;
 
 use App\Classe\Cart;
+use App\Message\SendOrderConfirmationEmail;
 use App\Repository\OrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Stripe\Checkout\Session;
 use Stripe\Stripe;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 class PaymentController extends AbstractController
@@ -73,7 +75,13 @@ class PaymentController extends AbstractController
     }
 
     #[Route('/commande/merci/{stripe_session_id}', name: 'app_payment_success')]
-    public function success($stripe_session_id, OrderRepository $orderRepository, EntityManagerInterface $entityManager, Cart $cart): Response
+    public function success(
+        $stripe_session_id,
+        OrderRepository $orderRepository,
+        EntityManagerInterface $entityManager,
+        Cart $cart,
+        MessageBusInterface $messageBus
+    ): Response
     {
         $order = $orderRepository->findOneBy([
             'stripe_session_id' => $stripe_session_id,
@@ -88,6 +96,9 @@ class PaymentController extends AbstractController
             $order->setState(2);
             $cart->remove();
             $entityManager->flush();
+
+            // Dispatch async email confirmation
+            $messageBus->dispatch(new SendOrderConfirmationEmail($order->getId()));
         }
 
         return $this->render('payment/success.html.twig', [

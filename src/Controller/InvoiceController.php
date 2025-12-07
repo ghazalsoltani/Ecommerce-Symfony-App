@@ -10,11 +10,6 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class InvoiceController extends AbstractController
 {
-    /*
-     * IMPRESSION FACTURE PDF pour un utilisateur connecté
-     * Vérification de la commande pour un utilisateur donné
-     */
-
     #[Route('/compte/facture/impression/{id_order}', name: 'app_invoice_customer')]
     public function printForCustomer(OrderRepository $orderRepository, $id_order): Response
     {
@@ -29,15 +24,19 @@ class InvoiceController extends AbstractController
         if ($order->getUser() !== $this->getUser()) {
             return $this->redirectToRoute('app_account');
         }
-
+        // Create DomPDF instance
         $dompdf = new Dompdf();
+        // Render Twig template to HTML string
         $html = $this->renderView('invoice/index.html.twig',[
             'order' => $order
         ]);
-
+        // Load HTML into DomPDF
         $dompdf->loadHtml($html);
+        // Set paper size
         $dompdf->setPaper('A4', 'portrait');
+        // Generate the PDF
         $dompdf->render();
+        // Output to browser (Attachment => false means display , not download)
         $dompdf->stream('facture.pdf', [
             'Attachment' => false
         ]);
@@ -45,11 +44,6 @@ class InvoiceController extends AbstractController
         exit();
 
     }
-
-    /*
-     * Impression facture PDF pour un administrateur connecté
-     * Vérification de la comande pour un utilisateur donné
-     */
     #[Route('/admin/facture/impression/{id_order}', name: 'app_invoice_admin')]
     public function printForAdmin(OrderRepository $orderRepository, $id_order): Response
     {

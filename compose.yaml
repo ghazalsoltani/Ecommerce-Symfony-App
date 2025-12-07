@@ -16,7 +16,6 @@ services:
     volumes:
       - database_data:/var/lib/mysql:rw
   ###< doctrine/doctrine-bundle ###
-
   php:
     build:
       context: .
@@ -25,12 +24,29 @@ services:
       - .:/var/www/html
       - /var/www/html/vendor
       - /var/www/html/var
-
     depends_on:
       database:
         condition: service_healthy
     environment:
       DATABASE_URL: "mysql://root:@database:3306/laboutiquefrancaise?serverVersion=8.0&charset=utf8mb4"
+
+  ###> symfony/messenger ###
+  worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    command: php bin/console messenger:consume async --time-limit=3600 --memory-limit=128M -vv
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/var
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "mysql://root:@database:3306/laboutiquefrancaise?serverVersion=8.0&charset=utf8mb4"
+  ###< symfony/messenger ###
 
   nginx:
     image: nginx:alpine
@@ -41,7 +57,6 @@ services:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - php
-
   ###> symfony/mailer ###
   mailer:
     image: axllent/mailpit
@@ -51,6 +66,5 @@ services:
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
-
 volumes:
   database_data:
