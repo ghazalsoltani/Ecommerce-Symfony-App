@@ -2,40 +2,62 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Repository\ProductRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
+#[ApiResource( // Expose this entity as an API endpoint
+    operations: [
+        new GetCollection(),
+        new Get()
+    ],
+    order: ['id' => 'DESC'],
+    paginationItemsPerPage: 10,
+    normalizationContext: ['groups' => ['product:read']]
+)]
 class Product
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['product:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['product:read'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['product:read'])]
     private ?string $slug = null;
 
     #[ORM\Column(type: Types::TEXT)]
+    #[Groups(['product:read'])]
     private ?string $description = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['product:read'])]
     private ?string $illustration = null;
 
     #[ORM\Column]
+    #[Groups(['product:read'])]
     private ?float $price = null;
 
     #[ORM\Column]
+    #[Groups(['product:read'])]
     private ?float $tva = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]
+    #[Groups(['product:read'])]
     private ?Category $category = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product:read'])]
     private ?bool $isHomepage = null;
 
     public function getId(): ?int
