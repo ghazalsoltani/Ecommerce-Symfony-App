@@ -50,3 +50,6 @@ yarn-error.log
 
 #Test files
 public/dbtest.php
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###
