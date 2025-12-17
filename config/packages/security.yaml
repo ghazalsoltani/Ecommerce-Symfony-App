@@ -49,6 +49,9 @@ security:
         - { path: ^/api/register, roles: PUBLIC_ACCESS}
         - { path: ^/api/products, roles: PUBLIC_ACCESS }
         - { path: ^/api/categories, roles: PUBLIC_ACCESS }
+        - { path: ^/api/carriers, roles: PUBLIC_ACCESS }
+        - { path: ^/api/user, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/orders, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/compte, roles: ROLE_USER }
         - { path: ^/commande, roles: ROLE_USER }
