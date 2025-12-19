@@ -50,6 +50,7 @@ security:
         - { path: ^/api/products, roles: PUBLIC_ACCESS }
         - { path: ^/api/categories, roles: PUBLIC_ACCESS }
         - { path: ^/api/carriers, roles: PUBLIC_ACCESS }
+        - { path: ^/api/checkout, roles: PUBLIC_ACCESS }
         - { path: ^/api/user, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/orders, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
