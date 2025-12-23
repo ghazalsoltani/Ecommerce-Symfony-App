@@ -1,4 +1,4 @@
-# 🛍️ La Boutique Française
+# 🛍️ Ghazaléa - Backtend
 
 > A modern e-commerce platform built with Symfony 7, fully Dockerized for seamless development and deployment.
 
@@ -685,4 +685,3 @@ docker compose exec php php bin/phpunit
 [![GitHub](https://img.shields.io/badge/GitHub-ghazalsoltani-181717?style=flat&logo=github)](https://github.com/ghazalsoltani)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat&logo=linkedin)](https://linkedin.com/in/ghazalsoltani)
 
----
