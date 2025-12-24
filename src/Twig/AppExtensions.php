@@ -4,6 +4,7 @@ namespace App\Twig;
 
 use App\Classe\Cart;
 use App\Repository\CategoryRepository;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Twig\Extension\AbstractExtension;
 use Twig\Extension\GlobalsInterface;
 use Twig\TwigFilter;
@@ -12,52 +13,37 @@ class AppExtensions extends AbstractExtension implements GlobalsInterface
 {
     private $categoryRepository;
     private $cart;
-    //Constructor for dependency injection of CategoryRepository
-    public function __construct(CategoryRepository $categoryRepository, Cart $cart)
+    private $requestStack;
+
+    public function __construct(CategoryRepository $categoryRepository, Cart $cart, RequestStack $requestStack)
     {
-        //store the injected repository in the private property
         $this->categoryRepository = $categoryRepository;
         $this->cart = $cart;
+        $this->requestStack = $requestStack;
     }
-    /**
-     * @return TwigFilter[]
-     * Define custom twig filters
-     *
-     * This method is used to register custom filters that can be used in Twig templates.
-     */
+
     public function getFilters()
     {
         return [
-            // Define a filter named "price" that calls the "formatPrice" method
             new TwigFilter('price', [$this, 'formatPrice'])
         ];
     }
 
-    /**
-     * @return string
-     * Custom filter to format prices
-     *
-     * This method formats a number as a price with:
-     * 2 decimal places
-     * a comma (,) as the decimal separator
-     * a euro € symbol
-     */
     public function formatPrice($number)
     {
-        //format the number with 2 decimal places, a comma as a decimal separator and no thousand separator
-        return number_format($number, '2', ','). ' €';
+        return number_format($number, '2', ',') . ' €';
     }
-    /**
-     * Define global variables accessible in Twig templates.
-     *
-     * This method allows defining variables that are globally available in all Twig templates.
-     */
+
     public function getGlobals(): array
     {
+        // Check if we're in an API context (stateless)
+        $request = $this->requestStack->getCurrentRequest();
+        $isApiRequest = $request && str_starts_with($request->getPathInfo(), '/api');
+
         return [
-            // Define a global variable "allCategories" containing all categories from the repository
             'allCategories' => $this->categoryRepository->findAll(),
-            'fullCartQuantity' => $this->cart->fullQuantity()
+            // Only get cart quantity if not in API context
+            'fullCartQuantity' => $isApiRequest ? 0 : $this->cart->fullQuantity()
         ];
     }
 }

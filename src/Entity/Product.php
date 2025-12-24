@@ -17,7 +17,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get()
     ],
     order: ['id' => 'DESC'],
-    paginationItemsPerPage: 10,
+    paginationEnabled: false,
     normalizationContext: ['groups' => ['product:read']]
 )]
 class Product
