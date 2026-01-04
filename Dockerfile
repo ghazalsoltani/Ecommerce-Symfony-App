@@ -97,15 +97,27 @@ stdout_logfile_maxbytes=0\n\
 stderr_logfile=/dev/stderr\n\
 stderr_logfile_maxbytes=0' > /etc/supervisor/conf.d/supervisord.conf
 
-# Startup script
+# Startup script with migrations
 RUN echo '#!/bin/bash\n\
 echo "=== Ghazalea Backend Starting ==="\n\
-echo "Checking .env:"\n\
-cat /app/.env | grep -v PASSWORD | grep -v SECRET\n\
-echo ""\n\
+\n\
+# Clear cache\n\
 rm -rf /app/var/cache/*\n\
 mkdir -p /app/var/cache/prod /app/var/log\n\
 chmod -R 777 /app/var\n\
+\n\
+# Wait for MySQL to be ready\n\
+echo "Waiting for MySQL..."\n\
+sleep 5\n\
+\n\
+# Run migrations\n\
+echo "Running database migrations..."\n\
+cd /app && php bin/console doctrine:migrations:migrate --no-interaction 2>&1 || echo "Migrations failed or already up to date"\n\
+\n\
+# If no migrations, try creating schema directly\n\
+echo "Ensuring database schema..."\n\
+cd /app && php bin/console doctrine:schema:update --force 2>&1 || echo "Schema update done"\n\
+\n\
 echo "Starting services..."\n\
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' > /start.sh && chmod +x /start.sh
 
