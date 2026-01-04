@@ -62,11 +62,12 @@ RUN chmod -R 777 var && \
 RUN php bin/console cache:clear --env=prod --no-debug --no-warmup 2>/dev/null || true && \
     php bin/console cache:warmup --env=prod --no-debug 2>/dev/null || true
 
-# Nginx configuration
+# Nginx configuration template (PORT will be replaced at runtime)
 RUN echo 'server {\n\
-    listen 80;\n\
+    listen PORT_PLACEHOLDER;\n\
     server_name _;\n\
     root /app/public;\n\
+    index index.php;\n\
     \n\
     location / {\n\
         try_files $uri /index.php$is_args$args;\n\
@@ -80,6 +81,9 @@ RUN echo 'server {\n\
         fastcgi_param DOCUMENT_ROOT $realpath_root;\n\
         fastcgi_param APP_ENV prod;\n\
         fastcgi_param APP_DEBUG 0;\n\
+        fastcgi_buffer_size 128k;\n\
+        fastcgi_buffers 4 256k;\n\
+        fastcgi_busy_buffers_size 256k;\n\
         internal;\n\
     }\n\
     \n\
@@ -91,19 +95,32 @@ RUN echo 'server {\n\
     access_log /dev/stdout;\n\
 }' > /etc/nginx/sites-available/default
 
-# Supervisor configuration to run both nginx and php-fpm
+# Remove default nginx config
+RUN rm -f /etc/nginx/sites-enabled/default && \
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+# Supervisor configuration
 RUN echo '[supervisord]\n\
 nodaemon=true\n\
+user=root\n\
 \n\
 [program:php-fpm]\n\
 command=/usr/local/sbin/php-fpm\n\
 autostart=true\n\
 autorestart=true\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
 \n\
 [program:nginx]\n\
 command=/usr/sbin/nginx -g "daemon off;"\n\
 autostart=true\n\
-autorestart=true' > /etc/supervisor/conf.d/supervisord.conf
+autorestart=true\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0' > /etc/supervisor/conf.d/supervisord.conf
 
 # PHP production configuration
 RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
@@ -111,10 +128,21 @@ RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
 
-# Remove default nginx config that might conflict
-RUN rm -f /etc/nginx/sites-enabled/default && \
-    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+# Create startup script that replaces PORT and starts supervisor
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Use PORT from environment, default to 80\n\
+PORT=${PORT:-80}\n\
+echo "Starting application on port $PORT"\n\
+\n\
+# Replace PORT_PLACEHOLDER with actual port in nginx config\n\
+sed -i "s/PORT_PLACEHOLDER/$PORT/g" /etc/nginx/sites-available/default\n\
+\n\
+# Start supervisor\n\
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' > /start.sh && \
+    chmod +x /start.sh
 
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/start.sh"]
