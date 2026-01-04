@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Fix Apache MPM issue - disable mpm_event and enable mpm_prefork
+RUN a2dismod mpm_event && a2enmod mpm_prefork
+
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
@@ -63,7 +66,13 @@ RUN chmod -R 777 var && \
 RUN php bin/console cache:clear --env=prod --no-debug --no-warmup 2>/dev/null || true && \
     php bin/console cache:warmup --env=prod --no-debug 2>/dev/null || true
 
-# Apache configuration
+# Apache configuration - set document root
+ENV APACHE_DOCUMENT_ROOT=/app/public
+
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# Create Apache virtual host config
 RUN echo '<VirtualHost *:80>\n\
     DocumentRoot /app/public\n\
     <Directory /app/public>\n\
@@ -73,6 +82,8 @@ RUN echo '<VirtualHost *:80>\n\
     </Directory>\n\
     SetEnv APP_ENV prod\n\
     SetEnv APP_DEBUG 0\n\
+    ErrorLog /dev/stderr\n\
+    CustomLog /dev/stdout combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
 # PHP production configuration
