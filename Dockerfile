@@ -35,7 +35,8 @@ RUN mkdir -p var/cache var/log config/jwt public/uploads
 RUN echo "APP_ENV=prod" > .env && \
     echo "APP_DEBUG=0" >> .env && \
     echo "APP_SECRET=build-time-secret-change-in-production" >> .env && \
-    echo "DATABASE_URL=mysql://user:pass@localhost:3306/db" >> .env
+    echo "DATABASE_URL=mysql://user:pass@localhost:3306/db" >> .env && \
+    echo "CORS_ALLOW_ORIGIN='^https?://.*$'" >> .env
 
 # Install dependencies WITHOUT scripts and WITHOUT dev packages
 RUN SYMFONY_DOTENV_VARS=0 composer install \
@@ -58,11 +59,10 @@ RUN chmod -R 777 var && \
     chmod -R 755 public/uploads && \
     chown -R www-data:www-data var public/uploads config/jwt
 
-# Cache warmup (ignore errors)
-RUN php bin/console cache:clear --env=prod --no-debug --no-warmup 2>/dev/null || true && \
-    php bin/console cache:warmup --env=prod --no-debug 2>/dev/null || true
+# Configure PHP-FPM to pass environment variables
+RUN echo "clear_env = no" >> /usr/local/etc/php-fpm.d/www.conf
 
-# Nginx configuration template (PORT will be replaced at runtime)
+# Nginx configuration template
 RUN echo 'server {\n\
     listen PORT_PLACEHOLDER;\n\
     server_name _;\n\
@@ -79,8 +79,6 @@ RUN echo 'server {\n\
         include fastcgi_params;\n\
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;\n\
         fastcgi_param DOCUMENT_ROOT $realpath_root;\n\
-        fastcgi_param APP_ENV prod;\n\
-        fastcgi_param APP_DEBUG 0;\n\
         fastcgi_buffer_size 128k;\n\
         fastcgi_buffers 4 256k;\n\
         fastcgi_busy_buffers_size 256k;\n\
@@ -128,21 +126,27 @@ RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
 
-# Create startup script that replaces PORT and starts supervisor
+# Create startup script
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
-# Use PORT from environment, default to 80\n\
-PORT=${PORT:-80}\n\
+# Use PORT from environment, default to 8080\n\
+PORT=${PORT:-8080}\n\
 echo "Starting application on port $PORT"\n\
 \n\
 # Replace PORT_PLACEHOLDER with actual port in nginx config\n\
 sed -i "s/PORT_PLACEHOLDER/$PORT/g" /etc/nginx/sites-available/default\n\
 \n\
+# Export all environment variables to a file that PHP-FPM can read\n\
+env | grep -v "^_" > /app/.env.local\n\
+\n\
+# Clear and warmup cache with proper environment\n\
+cd /app && php bin/console cache:clear --env=prod --no-debug 2>/dev/null || true\n\
+\n\
 # Start supervisor\n\
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' > /start.sh && \
     chmod +x /start.sh
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["/start.sh"]
