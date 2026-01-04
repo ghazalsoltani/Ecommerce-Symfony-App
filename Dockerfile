@@ -28,8 +28,10 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 # Copy entire project
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p var/cache var/log config/jwt public/uploads
+# Create necessary directories with proper permissions
+RUN mkdir -p var/cache/prod var/log config/jwt public/uploads && \
+    chmod -R 777 var && \
+    chown -R www-data:www-data var
 
 # Create a minimal .env file for the build process
 RUN echo "APP_ENV=prod" > .env && \
@@ -54,16 +56,16 @@ RUN openssl genpkey -algorithm RSA -out config/jwt/private.pem -pkeyopt rsa_keyg
     openssl rsa -pubout -in config/jwt/private.pem -out config/jwt/public.pem && \
     chmod 644 config/jwt/private.pem config/jwt/public.pem
 
-# Set permissions
+# Set final permissions
 RUN chmod -R 777 var && \
     chmod -R 755 public/uploads && \
     chown -R www-data:www-data var public/uploads config/jwt
 
-# Configure PHP-FPM to pass environment variables
+# Configure PHP-FPM
 RUN echo "clear_env = no" >> /usr/local/etc/php-fpm.d/www.conf && \
     echo "catch_workers_output = yes" >> /usr/local/etc/php-fpm.d/www.conf
 
-# Nginx configuration template
+# Nginx configuration
 RUN echo 'server {\n\
     listen PORT_PLACEHOLDER;\n\
     server_name _;\n\
@@ -94,7 +96,6 @@ RUN echo 'server {\n\
     access_log /dev/stdout;\n\
 }' > /etc/nginx/sites-available/default
 
-# Remove default nginx config
 RUN rm -f /etc/nginx/sites-enabled/default && \
     ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
@@ -127,34 +128,45 @@ RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
 
-# Create startup script - only export specific variables
+# Create startup script
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
 PORT=${PORT:-8080}\n\
 echo "Starting application on port $PORT"\n\
 \n\
-# Replace PORT_PLACEHOLDER with actual port in nginx config\n\
+# Replace PORT in nginx config\n\
 sed -i "s/PORT_PLACEHOLDER/$PORT/g" /etc/nginx/sites-available/default\n\
 \n\
-# Create .env.local with only the variables we need (properly quoted)\n\
-echo "APP_ENV=${APP_ENV:-prod}" > /app/.env.local\n\
-echo "APP_DEBUG=${APP_DEBUG:-0}" >> /app/.env.local\n\
-echo "APP_SECRET=${APP_SECRET:-default-secret}" >> /app/.env.local\n\
-echo "DATABASE_URL=\"${DATABASE_URL}\"" >> /app/.env.local\n\
-echo "CORS_ALLOW_ORIGIN=\"${CORS_ALLOW_ORIGIN:-^https?://.*}\"" >> /app/.env.local\n\
-echo "JWT_SECRET_KEY=${JWT_SECRET_KEY:-/app/config/jwt/private.pem}" >> /app/.env.local\n\
-echo "JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY:-/app/config/jwt/public.pem}" >> /app/.env.local\n\
-echo "JWT_PASSPHRASE=${JWT_PASSPHRASE:-}" >> /app/.env.local\n\
-echo "STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}" >> /app/.env.local\n\
-echo "STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}" >> /app/.env.local\n\
+# Create .env.local with Railway variables\n\
+cat > /app/.env.local << EOF\n\
+APP_ENV=${APP_ENV:-prod}\n\
+APP_DEBUG=${APP_DEBUG:-0}\n\
+APP_SECRET=${APP_SECRET:-default-secret}\n\
+DATABASE_URL=${DATABASE_URL}\n\
+CORS_ALLOW_ORIGIN=${CORS_ALLOW_ORIGIN:-^https?://.*}\n\
+JWT_SECRET_KEY=${JWT_SECRET_KEY:-/app/config/jwt/private.pem}\n\
+JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY:-/app/config/jwt/public.pem}\n\
+JWT_PASSPHRASE=${JWT_PASSPHRASE:-}\n\
+STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}\n\
+STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}\n\
+EOF\n\
 \n\
-# Set proper permissions\n\
-chmod 644 /app/.env.local\n\
-chown www-data:www-data /app/.env.local\n\
+# Fix permissions for var directory\n\
+rm -rf /app/var/cache/*\n\
+mkdir -p /app/var/cache/prod /app/var/log\n\
+chmod -R 777 /app/var\n\
+chown -R www-data:www-data /app/var\n\
 \n\
-# Clear cache\n\
-cd /app && php bin/console cache:clear --env=prod --no-debug 2>/dev/null || true\n\
+# Clear and warmup cache\n\
+cd /app && php bin/console cache:clear --env=prod --no-debug 2>&1 || true\n\
+cd /app && php bin/console cache:warmup --env=prod --no-debug 2>&1 || true\n\
+\n\
+# Final permission fix after cache warmup\n\
+chmod -R 777 /app/var\n\
+chown -R www-data:www-data /app/var\n\
+\n\
+echo "Cache warmed up, starting services..."\n\
 \n\
 # Start supervisor\n\
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' > /start.sh && \
