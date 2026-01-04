@@ -36,7 +36,7 @@ RUN echo "APP_ENV=prod" > .env && \
     echo "APP_DEBUG=0" >> .env && \
     echo "APP_SECRET=build-time-secret-change-in-production" >> .env && \
     echo "DATABASE_URL=mysql://user:pass@localhost:3306/db" >> .env && \
-    echo "CORS_ALLOW_ORIGIN='^https?://.*$'" >> .env
+    echo "CORS_ALLOW_ORIGIN='^https?://.*'" >> .env
 
 # Install dependencies WITHOUT scripts and WITHOUT dev packages
 RUN SYMFONY_DOTENV_VARS=0 composer install \
@@ -60,7 +60,8 @@ RUN chmod -R 777 var && \
     chown -R www-data:www-data var public/uploads config/jwt
 
 # Configure PHP-FPM to pass environment variables
-RUN echo "clear_env = no" >> /usr/local/etc/php-fpm.d/www.conf
+RUN echo "clear_env = no" >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo "catch_workers_output = yes" >> /usr/local/etc/php-fpm.d/www.conf
 
 # Nginx configuration template
 RUN echo 'server {\n\
@@ -126,21 +127,33 @@ RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
 
-# Create startup script
+# Create startup script - only export specific variables
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
-# Use PORT from environment, default to 8080\n\
 PORT=${PORT:-8080}\n\
 echo "Starting application on port $PORT"\n\
 \n\
 # Replace PORT_PLACEHOLDER with actual port in nginx config\n\
 sed -i "s/PORT_PLACEHOLDER/$PORT/g" /etc/nginx/sites-available/default\n\
 \n\
-# Export all environment variables to a file that PHP-FPM can read\n\
-env | grep -v "^_" > /app/.env.local\n\
+# Create .env.local with only the variables we need (properly quoted)\n\
+echo "APP_ENV=${APP_ENV:-prod}" > /app/.env.local\n\
+echo "APP_DEBUG=${APP_DEBUG:-0}" >> /app/.env.local\n\
+echo "APP_SECRET=${APP_SECRET:-default-secret}" >> /app/.env.local\n\
+echo "DATABASE_URL=\"${DATABASE_URL}\"" >> /app/.env.local\n\
+echo "CORS_ALLOW_ORIGIN=\"${CORS_ALLOW_ORIGIN:-^https?://.*}\"" >> /app/.env.local\n\
+echo "JWT_SECRET_KEY=${JWT_SECRET_KEY:-/app/config/jwt/private.pem}" >> /app/.env.local\n\
+echo "JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY:-/app/config/jwt/public.pem}" >> /app/.env.local\n\
+echo "JWT_PASSPHRASE=${JWT_PASSPHRASE:-}" >> /app/.env.local\n\
+echo "STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}" >> /app/.env.local\n\
+echo "STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}" >> /app/.env.local\n\
 \n\
-# Clear and warmup cache with proper environment\n\
+# Set proper permissions\n\
+chmod 644 /app/.env.local\n\
+chown www-data:www-data /app/.env.local\n\
+\n\
+# Clear cache\n\
 cd /app && php bin/console cache:clear --env=prod --no-debug 2>/dev/null || true\n\
 \n\
 # Start supervisor\n\
