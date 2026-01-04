@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     nginx \
     supervisor \
+    default-mysql-client \
     && docker-php-ext-install pdo pdo_mysql zip gd intl opcache mbstring \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -28,7 +29,7 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 # Copy entire project
 COPY . .
 
-# Create necessary directories with proper permissions
+# Create necessary directories
 RUN mkdir -p var/cache/prod var/log config/jwt public/uploads && \
     chmod -R 777 var && \
     chown -R www-data:www-data var
@@ -36,11 +37,11 @@ RUN mkdir -p var/cache/prod var/log config/jwt public/uploads && \
 # Create a minimal .env file for the build process
 RUN echo "APP_ENV=prod" > .env && \
     echo "APP_DEBUG=0" >> .env && \
-    echo "APP_SECRET=build-time-secret-change-in-production" >> .env && \
+    echo "APP_SECRET=build-time-secret" >> .env && \
     echo "DATABASE_URL=mysql://user:pass@localhost:3306/db" >> .env && \
     echo "CORS_ALLOW_ORIGIN='^https?://.*'" >> .env
 
-# Install dependencies WITHOUT scripts and WITHOUT dev packages
+# Install dependencies
 RUN SYMFONY_DOTENV_VARS=0 composer install \
     --no-dev \
     --no-scripts \
@@ -48,7 +49,6 @@ RUN SYMFONY_DOTENV_VARS=0 composer install \
     --prefer-dist \
     --optimize-autoloader
 
-# Generate optimized autoloader
 RUN composer dump-autoload --no-dev --classmap-authoritative --optimize
 
 # Generate JWT keys
@@ -56,7 +56,7 @@ RUN openssl genpkey -algorithm RSA -out config/jwt/private.pem -pkeyopt rsa_keyg
     openssl rsa -pubout -in config/jwt/private.pem -out config/jwt/public.pem && \
     chmod 644 config/jwt/private.pem config/jwt/public.pem
 
-# Set final permissions
+# Set permissions
 RUN chmod -R 777 var && \
     chmod -R 755 public/uploads && \
     chown -R www-data:www-data var public/uploads config/jwt
@@ -122,23 +122,22 @@ stdout_logfile_maxbytes=0\n\
 stderr_logfile=/dev/stderr\n\
 stderr_logfile_maxbytes=0' > /etc/supervisor/conf.d/supervisord.conf
 
-# PHP production configuration
-RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
+# PHP configuration
+RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
 PORT=${PORT:-8080}\n\
-echo "Starting application on port $PORT"\n\
+echo "=== Starting Ghazalea Backend ==="\n\
+echo "Port: $PORT"\n\
+echo "DATABASE_URL: ${DATABASE_URL:-NOT SET}"\n\
 \n\
 # Replace PORT in nginx config\n\
 sed -i "s/PORT_PLACEHOLDER/$PORT/g" /etc/nginx/sites-available/default\n\
 \n\
-# Create .env.local with Railway variables\n\
+# Create .env.local\n\
 cat > /app/.env.local << EOF\n\
 APP_ENV=${APP_ENV:-prod}\n\
 APP_DEBUG=${APP_DEBUG:-0}\n\
@@ -152,23 +151,31 @@ STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}\n\
 STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}\n\
 EOF\n\
 \n\
-# Fix permissions for var directory\n\
+echo "=== .env.local created ==="\n\
+cat /app/.env.local\n\
+echo "========================"\n\
+\n\
+# Test MySQL connection\n\
+echo "Testing MySQL connection..."\n\
+if mysql -h mysql.railway.internal -u root -pKmLMNPbyiVkgCCvghrCUJcJzULZKLqko -e "SELECT 1" 2>/dev/null; then\n\
+    echo "MySQL connection OK!"\n\
+else\n\
+    echo "MySQL connection FAILED - but continuing anyway"\n\
+fi\n\
+\n\
+# Fix permissions\n\
 rm -rf /app/var/cache/*\n\
 mkdir -p /app/var/cache/prod /app/var/log\n\
 chmod -R 777 /app/var\n\
 chown -R www-data:www-data /app/var\n\
 \n\
-# Clear and warmup cache\n\
-cd /app && php bin/console cache:clear --env=prod --no-debug 2>&1 || true\n\
-cd /app && php bin/console cache:warmup --env=prod --no-debug 2>&1 || true\n\
+# Skip cache warmup if DB not available (will warmup on first request)\n\
+echo "Skipping cache warmup - will warmup on first request"\n\
 \n\
-# Final permission fix after cache warmup\n\
+# Final permissions\n\
 chmod -R 777 /app/var\n\
-chown -R www-data:www-data /app/var\n\
 \n\
-echo "Cache warmed up, starting services..."\n\
-\n\
-# Start supervisor\n\
+echo "Starting services..."\n\
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' > /start.sh && \
     chmod +x /start.sh
 
