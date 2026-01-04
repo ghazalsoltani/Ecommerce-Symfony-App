@@ -1,5 +1,6 @@
 .git
 .gitignore
+.env
 .env.local
 .env.*.local
 .env.test
@@ -9,9 +10,11 @@ node_modules
 .idea
 .vscode
 docker-compose*.yml
+compose*.yaml
 README.md
 .DS_Store
 Thumbs.db
 tests/
 phpunit.xml.dist
 .php-cs-fixer.dist.php
+docker/
