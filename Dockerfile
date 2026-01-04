@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:8.2-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -8,15 +8,11 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libicu-dev \
     libonig-dev \
+    nginx \
+    supervisor \
     && docker-php-ext-install pdo pdo_mysql zip gd intl opcache mbstring \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Fix Apache MPM issue - disable mpm_event and enable mpm_prefork
-RUN a2dismod mpm_event && a2enmod mpm_prefork
-
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -24,7 +20,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /app
 
-# Set environment variables FIRST (very important!)
+# Set environment variables
 ENV APP_ENV=prod
 ENV APP_DEBUG=0
 ENV COMPOSER_ALLOW_SUPERUSER=1
@@ -32,7 +28,7 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 # Copy entire project
 COPY . .
 
-# Create necessary directories before composer install
+# Create necessary directories
 RUN mkdir -p var/cache var/log config/jwt public/uploads
 
 # Create a minimal .env file for the build process
@@ -62,38 +58,63 @@ RUN chmod -R 777 var && \
     chmod -R 755 public/uploads && \
     chown -R www-data:www-data var public/uploads config/jwt
 
-# Try to warm up cache (ignore errors during build)
+# Cache warmup (ignore errors)
 RUN php bin/console cache:clear --env=prod --no-debug --no-warmup 2>/dev/null || true && \
     php bin/console cache:warmup --env=prod --no-debug 2>/dev/null || true
 
-# Apache configuration - set document root
-ENV APACHE_DOCUMENT_ROOT=/app/public
+# Nginx configuration
+RUN echo 'server {\n\
+    listen 80;\n\
+    server_name _;\n\
+    root /app/public;\n\
+    \n\
+    location / {\n\
+        try_files $uri /index.php$is_args$args;\n\
+    }\n\
+    \n\
+    location ~ ^/index\\.php(/|$) {\n\
+        fastcgi_pass 127.0.0.1:9000;\n\
+        fastcgi_split_path_info ^(.+\\.php)(/.*)$;\n\
+        include fastcgi_params;\n\
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;\n\
+        fastcgi_param DOCUMENT_ROOT $realpath_root;\n\
+        fastcgi_param APP_ENV prod;\n\
+        fastcgi_param APP_DEBUG 0;\n\
+        internal;\n\
+    }\n\
+    \n\
+    location ~ \\.php$ {\n\
+        return 404;\n\
+    }\n\
+    \n\
+    error_log /dev/stderr;\n\
+    access_log /dev/stdout;\n\
+}' > /etc/nginx/sites-available/default
 
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# Create Apache virtual host config
-RUN echo '<VirtualHost *:80>\n\
-    DocumentRoot /app/public\n\
-    <Directory /app/public>\n\
-        AllowOverride All\n\
-        Require all granted\n\
-        FallbackResource /index.php\n\
-    </Directory>\n\
-    SetEnv APP_ENV prod\n\
-    SetEnv APP_DEBUG 0\n\
-    ErrorLog /dev/stderr\n\
-    CustomLog /dev/stdout combined\n\
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+# Supervisor configuration to run both nginx and php-fpm
+RUN echo '[supervisord]\n\
+nodaemon=true\n\
+\n\
+[program:php-fpm]\n\
+command=/usr/local/sbin/php-fpm\n\
+autostart=true\n\
+autorestart=true\n\
+\n\
+[program:nginx]\n\
+command=/usr/sbin/nginx -g "daemon off;"\n\
+autostart=true\n\
+autorestart=true' > /etc/supervisor/conf.d/supervisord.conf
 
 # PHP production configuration
 RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "realpath_cache_size=4096K" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "realpath_cache_ttl=600" >> /usr/local/etc/php/conf.d/opcache.ini
+    echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
+
+# Remove default nginx config that might conflict
+RUN rm -f /etc/nginx/sites-enabled/default && \
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
