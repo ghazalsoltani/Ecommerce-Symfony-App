@@ -1,39 +1,55 @@
 FROM php:8.2-apache
 
-# Install dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libzip-dev \
     libpng-dev \
     libicu-dev \
-    && docker-php-ext-install pdo pdo_mysql zip gd intl opcache
+    && docker-php-ext-install pdo pdo_mysql zip gd intl opcache \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache mod_rewrite (TYPO FIXED HERE: was a]2enmod)
+# Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
 # Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy composer files first (for better caching)
+COPY composer.json composer.lock ./
+
+# Set environment to prod BEFORE installing dependencies
+ENV APP_ENV=prod
+
+# Install PHP dependencies (no dev, optimized)
+RUN composer install --no-dev --no-scripts --optimize-autoloader --no-interaction
+
+# Copy the rest of the project
 COPY . .
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Run post-install scripts manually
+RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
+
+# Clear and warm up cache
+RUN php bin/console cache:clear --env=prod --no-debug || true
+RUN php bin/console cache:warmup --env=prod --no-debug || true
 
 # Create JWT directory and generate keys
-# Note: If you have a passphrase in env, this generic key generation might need tweaking later.
-# For now, this is fine for initial deployment.
-RUN mkdir -p config/jwt && \
-    openssl genpkey -algorithm RSA -out config/jwt/private.pem -pkeyopt rsa_keygen_bits:4096 && \
-    openssl rsa -pubout -in config/jwt/private.pem -out config/jwt/public.pem && \
-    chmod 644 config/jwt/private.pem config/jwt/public.pem
+RUN mkdir -p config/jwt \
+    && openssl genpkey -algorithm RSA -out config/jwt/private.pem -pkeyopt rsa_keygen_bits:4096 \
+    && openssl rsa -pubout -in config/jwt/private.pem -out config/jwt/public.pem \
+    && chmod 644 config/jwt/private.pem config/jwt/public.pem
 
 # Create upload directory
-RUN mkdir -p public/uploads && chmod 777 public/uploads
+RUN mkdir -p public/uploads && chmod 755 public/uploads
+
+# Set proper permissions
+RUN chown -R www-data:www-data /app/var /app/public/uploads
 
 # Apache configuration
 RUN echo '<VirtualHost *:80>\n\
@@ -43,9 +59,11 @@ RUN echo '<VirtualHost *:80>\n\
         Require all granted\n\
         FallbackResource /index.php\n\
     </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
-# Expose port
+# Expose port 80
 EXPOSE 80
 
 # Start Apache
