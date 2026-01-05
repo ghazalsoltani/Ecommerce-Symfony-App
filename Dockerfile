@@ -52,13 +52,25 @@ RUN chmod -R 777 var && chown -R www-data:www-data var public/uploads config/jwt
 # Configure PHP-FPM
 RUN echo "clear_env = no" >> /usr/local/etc/php-fpm.d/www.conf
 
-# Nginx configuration
+# Nginx configuration with proper MIME types for images
 RUN echo 'server {\n\
     listen 8080;\n\
     server_name _;\n\
     root /app/public;\n\
     index index.php;\n\
-    location / { try_files $uri /index.php$is_args$args; }\n\
+    \n\
+    # Serve images with correct MIME type\n\
+    location /uploads/ {\n\
+        alias /app/public/uploads/;\n\
+        default_type image/jpeg;\n\
+        add_header Cache-Control "public, max-age=31536000";\n\
+        try_files $uri =404;\n\
+    }\n\
+    \n\
+    location / { \n\
+        try_files $uri /index.php$is_args$args; \n\
+    }\n\
+    \n\
     location ~ ^/index\\.php(/|$) {\n\
         fastcgi_pass 127.0.0.1:9000;\n\
         fastcgi_split_path_info ^(.+\\.php)(/.*)$;\n\
@@ -69,7 +81,9 @@ RUN echo 'server {\n\
         fastcgi_buffers 4 256k;\n\
         internal;\n\
     }\n\
+    \n\
     location ~ \\.php$ { return 404; }\n\
+    \n\
     error_log /dev/stderr;\n\
     access_log /dev/stdout;\n\
 }' > /etc/nginx/sites-available/default && \
@@ -97,26 +111,13 @@ stdout_logfile_maxbytes=0\n\
 stderr_logfile=/dev/stderr\n\
 stderr_logfile_maxbytes=0' > /etc/supervisor/conf.d/supervisord.conf
 
-# Startup script with migrations
+# Startup script
 RUN echo '#!/bin/bash\n\
 echo "=== Ghazalea Backend Starting ==="\n\
 \n\
-# Clear cache\n\
 rm -rf /app/var/cache/*\n\
 mkdir -p /app/var/cache/prod /app/var/log\n\
 chmod -R 777 /app/var\n\
-\n\
-# Wait for MySQL to be ready\n\
-echo "Waiting for MySQL..."\n\
-sleep 5\n\
-\n\
-# Run migrations\n\
-echo "Running database migrations..."\n\
-cd /app && php bin/console doctrine:migrations:migrate --no-interaction 2>&1 || echo "Migrations failed or already up to date"\n\
-\n\
-# If no migrations, try creating schema directly\n\
-echo "Ensuring database schema..."\n\
-cd /app && php bin/console doctrine:schema:update --force 2>&1 || echo "Schema update done"\n\
 \n\
 echo "Starting services..."\n\
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' > /start.sh && chmod +x /start.sh

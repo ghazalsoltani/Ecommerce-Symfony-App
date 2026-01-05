@@ -41,9 +41,6 @@ npm-debug.log
 yarn-error.log
 ###< Node ###
 
-###> Uploads ###
-/public/uploads/
-###< Uploads ###
 
 #SQL backups
 *.sql
