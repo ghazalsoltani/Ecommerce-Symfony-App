@@ -31,7 +31,9 @@ RUN rm -f .env .env.local .env.*.local && \
     echo 'MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0' >> .env && \
     echo 'MAILER_DSN=null://null' >> .env && \
     echo 'STRIPE_SECRET_KEY=sk_test_51Qm07kRwhbE0S47KOfwQTyRPeo8CLS2lAyoqEHwP1ykoLZwzAFgPj2zDSE7oowWQgJubfQJyF1V6IgZJXEUu6FcZ00kbDHIhto' >> .env && \
-    echo 'STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret' >> .env
+    echo 'STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret' >> .env && \
+    echo 'DOMAIN=https://ghazalea-backend-production.up.railway.app' >> .env && \
+    echo 'FRONTEND_DOMAIN=https://ghazalea.com' >> .env
 
 # Create directories
 RUN mkdir -p var/cache/prod var/log config/jwt public/uploads && \
