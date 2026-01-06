@@ -1,687 +1,260 @@
-# 🛍️ Ghazaléa - Backtend
+<img width="108" height="27" alt="logo" src="https://github.com/user-attachments/assets/093e2dc3-1a58-4863-ba72-c3fe81442572" />
 
-> A modern e-commerce platform built with Symfony 7, fully Dockerized for seamless development and deployment.
+## Backend
 
-[![CI](https://github.com/ghazalsoltani/Ecommerce-Symfony-App/actions/workflows/ci.yml/badge.svg)](https://github.com/ghazalsoltani/Ecommerce-Symfony-App/actions/workflows/ci.yml)
+<div align="center">
+
+### E-commerce REST API built with Symfony 7 | Deployed on Railway
+
+  ![Ghazalea Demo](./demo/Ghazalea-demo.gif)
+
+🌐 **[Live](https://ghazalea.com)** · 📡 **[API Endpoint](https://ghazalea-backend-production.up.railway.app/api/products)** · 🎨 **[Frontend Repo](https://github.com/ghazalsoltani/ghazalea-frontend)**
+
+
+
+[![CI/CD](https://github.com/ghazalsoltani/ghazalea-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/ghazalsoltani/ghazalea-backend/actions/workflows/ci.yml)
 [![Symfony](https://img.shields.io/badge/Symfony-7.x-000000?style=flat&logo=symfony)](https://symfony.com)
-[![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=flat&logo=php&logoColor=white)](https://php.net)
+[![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?style=flat&logo=php&logoColor=white)](https://php.net)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat&logo=mysql&logoColor=white)](https://mysql.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker&logoColor=white)](https://docker.com)
-[![Stripe](https://img.shields.io/badge/Stripe-Integrated-008CDD?style=flat&logo=stripe&logoColor=white)](https://stripe.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Railway](https://img.shields.io/badge/Railway-Deployed-0B0D0E?style=flat&logo=railway)](https://railway.app)
+
+</div>
 
 ---
 
-## 📋 Table of Contents
+## ⚡ Quick Overview
 
-- [Overview](#-overview)
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Installation](#-installation)
-  - [Docker Setup (Recommended)](#-docker-setup-recommended)
-  - [Traditional Setup](#-traditional-setup)
-- [Async Processing](#-async-processing)
-- [REST API](#-rest-api)
-- [CI/CD Pipeline](#-cicd-pipeline)
-- [Project Structure](#-project-structure)
-- [Configuration](#-configuration)
-- [Testing](#-testing)
-- [Author](#-author)
+> A **production-ready** e-commerce API powering [ghazalea.com](https://ghazalea.com) - a French artisanal accessories boutique.
+
+| 🎯 What I Built | 🛠️ How I Built It |
+|-----------------|-------------------|
+| REST API with 15+ endpoints | **API Platform** + Symfony 7 |
+| JWT Authentication | **LexikJWT** + bcrypt |
+| Async Email Processing | **Symfony Messenger** + Doctrine Transport |
+| Stripe Payment Integration | **PaymentIntent** workflow |
+| Admin Dashboard | **EasyAdmin 4** |
+| CI/CD Pipeline | **GitHub Actions** (tests, security, docker) |
+| Production Deployment | **Railway** + MySQL |
 
 ---
 
-## 🎯 Overview
+## 🏆 Key Technical Achievements
 
-La Boutique Française is a full-featured e-commerce platform implementing the complete online store lifecycle:
+### 1️⃣ Async Processing with Symfony Messenger
+```
+Customer pays → Response in 1s (vs 4s before)
+                    ↓
+              Background worker sends email via Mailjet
+```
 
-- **Product Management** – Catalog browsing with categories and featured products
-- **User Experience** – Authentication, account management, wishlists
-- **Shopping Flow** – Cart, multi-step checkout, secure payments
-- **Order Processing** – Tracking, PDF invoices, email notifications
-- **Async Processing** – Background job handling with Symfony Messenger
-- **REST API** – API Platform with OpenAPI documentation
-- **Administration** – Complete backoffice powered by EasyAdmin
+### 2️⃣ Full CI/CD Pipeline
+```yaml
+✅ Code Quality  →  ✅ PHPUnit Tests  →  ✅ Docker Build  →  ✅ Auto-Deploy
+```
 
-The codebase follows Symfony best practices: service-oriented architecture, dependency injection, reusable Twig components, and well-structured domain logic.
+### 3️⃣ Production Architecture
+```
+React (Vercel)  ──→  Symfony API (Railway)  ──→  MySQL (Railway)
+                            ↓
+                    Stripe + Mailjet + Worker
+```
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# Clone & Start (Docker)
+git clone https://github.com/ghazalsoltani/ghazalea-backend.git
+cd ghazalea-backend
+docker compose up -d
+
+# Access
+# App:     http://localhost:8080
+# API:     http://localhost:8080/api/products
+# Admin:   http://localhost:8080/admin
+# Mailpit: http://localhost:8025
+```
+
+---
+
+## 📡 API Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/products` | ❌ | List products (paginated) |
+| `GET` | `/api/categories` | ❌ | List categories |
+| `POST` | `/api/login_check` | ❌ | JWT authentication |
+| `GET` | `/api/wishlist` | ✅ | User's favorites |
+| `POST` | `/api/checkout/create-session` | ✅ | Stripe checkout |
+| `GET` | `/api/orders` | ✅ | Order history |
+
+****[Test API →](https://ghazalea-backend-production.up.railway.app/api/products)**
+
+---
+
+## 🛠️ Tech Stack
+
+<table>
+<tr>
+<td align="center" width="150">
+
+**Backend**<br>
+Symfony 7<br>
+PHP 8.2<br>
+API Platform
+
+</td>
+<td align="center" width="150">
+
+**Database**<br>
+MySQL 8.0<br>
+Doctrine ORM<br>
+Migrations
+
+</td>
+<td align="center" width="150">
+
+**DevOps**<br>
+Docker<br>
+GitHub Actions<br>
+Railway
+
+</td>
+<td align="center" width="150">
+
+**Integrations**<br>
+Stripe<br>
+Mailjet<br>
+JWT Auth
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PRODUCTION STACK                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   [Vercel]           [Railway]              [Railway]        │
+│   React App    ───▶   Symfony API    ───▶   MySQL DB        │
+│   ghazalea.com        + Nginx/PHP-FPM       + Backups       │
+│                            │                                 │
+│                            ├──▶ Stripe API (Payments)        │
+│                            ├──▶ Mailjet (Emails)             │
+│                            └──▶ Messenger Worker (Async)     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## ✨ Features
 
-### 🛒 Customer-Facing
-
-| Feature | Description |
-|---------|-------------|
-| **Authentication** | Registration, login, logout, password reset with token verification |
-| **User Account** | Profile management, multiple addresses, order history |
-| **Product Catalog** | Categories, featured products, detail pages |
-| **Wishlist** | Save products for later |
-| **Shopping Cart** | Session-based cart with add/remove/update quantities |
-| **Checkout** | Multi-step flow: Address → Carrier → Summary → Payment |
-| **Payments** | Secure Stripe integration with PaymentIntent workflow |
-| **Invoices** | PDF generation with DomPDF |
-| **Emails** | Transactional emails via Mailjet (async processing) |
-
-### 🛠 Admin Backoffice (EasyAdmin)
-
-- Product, category, and user management
-- Order workflow and status updates
-- Custom admin views for order details
-- Carrier management
-- Homepage header configuration
-- Featured product selection
-
-### 🔐 Security
-
-- Form login with password hashing (bcrypt)
-- Role-based authorization (`ROLE_USER` / `ROLE_ADMIN`)
-- CSRF protection on all forms
-- Token-based password reset flow
-- Secure session handling
-
----
-
-## 🛠 Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| **Backend** | Symfony 7, PHP 8.2 |
-| **Database** | MySQL 8.0 |
-| **Frontend** | Twig, Bootstrap 5 |
-| **Admin** | EasyAdmin 4 |
-| **Payments** | Stripe API |
-| **Emailing** | Mailjet |
-| **PDF** | DomPDF |
-| **Async Processing** | Symfony Messenger (Doctrine Transport) |
-| **REST API** | API Platform 4.1 |
-| **Build Tools** | Webpack Encore |
-| **Containerization** | Docker, Docker Compose |
-| **Web Server** | Nginx + PHP-FPM |
-| **CI/CD** | GitHub Actions |
-| **Testing** | PHPUnit 9.6 |
-
----
-
-## 🏗 Architecture
-
-### Application Layers
-
-```
-Request → Controller → Service → Repository → Database
-              │
-              ├──→ MessageBus ──→ Queue ──→ Worker
-              │
-              ├──→ Mailer ←→ Mailjet
-              │
-              └──→ Stripe API
-```
-
-| Layer | Responsibility |
-|-------|----------------|
-| **Controllers** | Handle HTTP requests, dispatch messages |
-| **Services** | Business logic (Cart, Mail, Stripe, Order) |
-| **Messages** | DTOs for async tasks (SendOrderConfirmationEmail) |
-| **Handlers** | Process messages from queue |
-| **Repositories** | Encapsulated database queries |
-| **Forms + Validators** | Input handling and validation |
-| **Event Subscribers** | Cross-cutting concerns |
-| **Twig** | Presentation layer with reusable components |
-
-### Data Model
-
-```
-User 1───* Address
-User 1───* Order 1───* OrderDetails *───1 Product
-Product *───1 Category
-Order *───1 Carrier
-User 1───* Wishlist *───1 Product
-Header (Homepage banners)
-```
-
----
-
-## 🚀 Installation
-
-### 🐳 Docker Setup (Recommended)
-
-Docker provides an isolated, reproducible environment with all dependencies pre-configured.
-
-#### Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- Git
-
-#### Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/ghazalsoltani/Ecommerce-Symfony-App.git
-cd Ecommerce-Symfony-App
-
-# Start all services (includes async worker)
-docker compose up -d
-
-# Wait for database to be healthy, then run migrations
-docker compose exec php php bin/console doctrine:migrations:migrate --no-interaction
-
-# Setup message queue table
-docker compose exec php php bin/console messenger:setup-transports
-
-# Build frontend assets
-docker compose exec php npm install
-docker compose exec php npm run build
-```
-
-#### Access Points
-
-| Service | URL |
-|---------|-----|
-| **Application** | http://localhost:8080 |
-| **REST API** | http://localhost:8080/api/products |
-| **Mailpit (Email Testing)** | http://localhost:8025 |
-| **MySQL** | localhost:3307 |
-
-#### Docker Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                       Docker Network                             │
-│                                                                  │
-│  ┌──────────┐    ┌──────────┐    ┌──────────────────┐          │
-│  │  Nginx   │───▶│   PHP    │───▶│     MySQL        │          │
-│  │  :8080   │    │  (FPM)   │    │     :3306        │          │
-│  └──────────┘    └──────────┘    └──────────────────┘          │
-│                        │                   ▲                    │
-│                        │                   │                    │
-│                        ▼                   │                    │
-│                  ┌──────────┐              │                    │
-│                  │  Worker  │──────────────┘                    │
-│                  │ (Messenger)              (reads queue)       │
-│                  └──────────┘                                   │
-│                        │                                        │
-│                        ▼                                        │
-│                  ┌──────────┐                                   │
-│                  │ Mailpit  │                                   │
-│                  │  :8025   │                                   │
-│                  └──────────┘                                   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Docker Services
-
-| Service | Image | Description |
-|---------|-------|-------------|
-| `nginx` | nginx:alpine | Web server, reverse proxy to PHP-FPM |
-| `php` | Custom (PHP 8.2-FPM) | Application runtime with Composer |
-| `worker` | Custom (PHP 8.2-FPM) | Async message processor (Messenger) |
-| `database` | mysql:8.0 | Data persistence |
-| `mailer` | axllent/mailpit | Email testing interface |
-
-#### Useful Docker Commands
-
-```bash
-# Start services
-docker compose up -d
-
-# Stop services
-docker compose down
-
-# Rebuild after Dockerfile changes
-docker compose up --build -d
-
-# View logs
-docker compose logs -f php
-docker compose logs -f worker
-docker compose logs -f nginx
-
-# Execute commands in PHP container
-docker compose exec php php bin/console cache:clear
-docker compose exec php composer require package-name
-
-# Check worker status
-docker compose logs worker
-docker compose exec php php bin/console messenger:stats
-
-# Access MySQL CLI
-docker compose exec database mysql -u root laboutiquefrancaise
-
-# Import database dump
-docker cp backup.sql laboutiquefrancaise-database-1:/backup.sql
-docker compose exec database sh -c "mysql -u root laboutiquefrancaise < /backup.sql"
-```
-
----
-
-### 💻 Traditional Setup
-
-#### Prerequisites
-
-- PHP 8.2+
-- Composer
-- Symfony CLI
-- MySQL 8.0
-- Node.js 18+
-
-#### Installation Steps
-
-```bash
-# Clone repository
-git clone https://github.com/ghazalsoltani/Ecommerce-Symfony-App.git
-cd Ecommerce-Symfony-App
-
-# Install PHP dependencies
-composer install
-
-# Configure environment
-cp .env .env.local
-# Edit .env.local with your database, Stripe, and Mailjet credentials
-
-# Create database and run migrations
-php bin/console doctrine:database:create
-php bin/console doctrine:migrations:migrate
-
-# Setup message queue
-php bin/console messenger:setup-transports
-
-# Install and build frontend assets
-npm install
-npm run dev      # Development
-npm run build    # Production
-
-# Start development server
-symfony serve
-
-# In a separate terminal, start the message worker
-php bin/console messenger:consume async -vv
-```
-
----
-
-## ⚡ Async Processing
-
-This application uses **Symfony Messenger** for asynchronous task processing, improving response times and user experience.
-
-### Why Async?
-
-When a customer completes a payment, multiple tasks need to happen:
-
-| Task | Sync (Before) | Async (Now) |
-|------|---------------|-------------|
-| Update order status | ✅ Immediate | ✅ Immediate |
-| Send confirmation email | ❌ Customer waits 1-3s | ✅ Background |
-| Response to customer | ~4 seconds | ~1 second |
-
-The customer sees the success page immediately while heavy tasks (email, PDF) process in the background.
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Payment Success Flow                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   Customer pays                                                  │
-│        │                                                         │
-│        ▼                                                         │
-│   PaymentController::success()                                   │
-│        │                                                         │
-│        ├── 1. Update order state (sync)                         │
-│        ├── 2. Clear cart (sync)                                 │
-│        └── 3. Dispatch SendOrderConfirmationEmail (async)       │
-│                         │                                        │
-│                         ▼                                        │
-│        ┌────────────────────────────────┐                       │
-│        │   messenger_messages (MySQL)   │                       │
-│        │   ┌──────────────────────────┐ │                       │
-│        │   │ orderId: 42              │ │                       │
-│        │   │ status: pending          │ │                       │
-│        │   └──────────────────────────┘ │                       │
-│        └────────────────────────────────┘                       │
-│                         │                                        │
-│   ════════════════════════════════════════                      │
-│   Customer sees "Thank you" page instantly                       │
-│   ════════════════════════════════════════                      │
-│                         │                                        │
-│                         ▼                                        │
-│        ┌────────────────────────────────┐                       │
-│        │      Worker Container          │                       │
-│        │  messenger:consume async       │                       │
-│        └────────────────────────────────┘                       │
-│                         │                                        │
-│                         ▼                                        │
-│        SendOrderConfirmationEmailHandler                         │
-│                         │                                        │
-│                         ▼                                        │
-│              Email sent via Mailjet                              │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Components
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| Message | `src/Message/SendOrderConfirmationEmail.php` | DTO containing order ID |
-| Handler | `src/MessageHandler/SendOrderConfirmationEmailHandler.php` | Fetches order, sends email |
-| Template | `src/Mail/order_confirmation.html` | Email content |
-| Config | `config/packages/messenger.yaml` | Transport and routing |
-
-### Message Flow
-
-```php
-// In PaymentController - dispatch message to queue
-$messageBus->dispatch(new SendOrderConfirmationEmail($order->getId()));
-
-// Handler receives and processes (in background)
-#[AsMessageHandler]
-class SendOrderConfirmationEmailHandler
-{
-    public function __invoke(SendOrderConfirmationEmail $message): void
-    {
-        $order = $this->orderRepository->find($message->getOrderId());
-        $this->mail->send(...);  // Send via Mailjet
-    }
-}
-```
-
-### Monitoring
-
-```bash
-# Check queue status
-docker compose exec php php bin/console messenger:stats
-
-# View worker logs
-docker compose logs -f worker
-
-# Process messages manually (if worker stopped)
-docker compose exec php php bin/console messenger:consume async -vv
-
-# View failed messages
-docker compose exec php php bin/console messenger:failed:show
-```
-
-### Configuration
-
-```yaml
-# config/packages/messenger.yaml
-framework:
-    messenger:
-        transports:
-            async:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'  # doctrine://default
-                retry_strategy:
-                    max_retries: 3
-                    multiplier: 2
-            failed: 'doctrine://default?queue_name=failed'
-        routing:
-            App\Message\SendOrderConfirmationEmail: async
-```
-
----
-
-## 🔌 REST API
-
-The application exposes a RESTful API built with **API Platform**, enabling integration with mobile apps, SPAs, or third-party services.
-
-### Available Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/products` | List all products (paginated) |
-| GET | `/api/products/{id}` | Get single product details |
-| GET | `/api/categories` | List all categories |
-| GET | `/api/categories/{id}` | Get single category |
-
-### Example Response
-
-```bash
-GET /api/products
-```
-
-```json
-{
-  "hydra:member": [
-    {
-      "@id": "/api/products/1",
-      "id": 1,
-      "name": "T-shirt bleu",
-      "slug": "t-shirt-bleu",
-      "description": "Un beau t-shirt bleu en coton",
-      "illustration": "t-shirt-bleu.jpg",
-      "price": 29.99,
-      "tva": 20,
-      "category": {
-        "id": 1,
-        "name": "Vêtements"
-      }
-    }
-  ],
-  "hydra:totalItems": 25
-}
-```
-
-### API Features
-
-| Feature | Implementation |
-|---------|----------------|
-| **Pagination** | 10 items per page (configurable) |
-| **Serialization Groups** | Controls exposed fields, prevents circular references |
-| **Read-Only** | Only GET operations (security by design) |
-| **OpenAPI Spec** | Available at `/api/docs.json` |
-| **JSON-LD/Hydra** | Linked data format with hypermedia controls |
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     API Platform Flow                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   Mobile App / SPA / Third-party                                 │
-│            │                                                     │
-│            ▼                                                     │
-│   GET /api/products                                              │
-│            │                                                     │
-│            ▼                                                     │
-│   ┌────────────────────────┐                                    │
-│   │    API Platform        │                                    │
-│   │  ┌──────────────────┐  │                                    │
-│   │  │ #[ApiResource]   │  │  Automatic CRUD from entities      │
-│   │  │ Product entity   │  │                                    │
-│   │  └──────────────────┘  │                                    │
-│   └────────────────────────┘                                    │
-│            │                                                     │
-│            ▼                                                     │
-│   ┌────────────────────────┐                                    │
-│   │   Serializer           │                                    │
-│   │   Groups: product:read │  Controls which fields to expose   │
-│   └────────────────────────┘                                    │
-│            │                                                     │
-│            ▼                                                     │
-│        JSON Response                                             │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Serialization Groups
-
-To prevent circular references (Product → Category → Products → ...), serialization groups control field visibility:
-
-```php
-// Product.php
-#[ApiResource(
-    operations: [new GetCollection(), new Get()],
-    normalizationContext: ['groups' => ['product:read']]
-)]
-class Product
-{
-    #[Groups(['product:read'])]
-    private ?string $name = null;
-
-    #[Groups(['product:read'])]
-    private ?Category $category = null;  // Includes category
-}
-
-// Category.php  
-class Category
-{
-    #[Groups(['product:read', 'category:read'])]
-    private ?string $name = null;
-
-    // No Groups on $products → breaks the circular loop
-    private Collection $products;
-}
-```
-
-### Testing the API
-
-```bash
-# List products
-curl http://localhost:8080/api/products
-
-# Get single product
-curl http://localhost:8080/api/products/1
-
-# List categories
-curl http://localhost:8080/api/categories
-
-# Get OpenAPI specification
-curl http://localhost:8080/api/docs.json
-```
-
----
-
-## 🔄 CI/CD Pipeline
-
-Automated testing and validation on every push using GitHub Actions.
-
-### Pipeline Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     GitHub Actions CI                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │    Tests     │  │ Code Quality │  │    Docker Build      │  │
-│  │   PHPUnit    │  │   Validate   │  │   Build PHP Image    │  │
-│  │  + MySQL     │  │   Security   │  │                      │  │
-│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Jobs
-
-| Job | Description |
-|-----|-------------|
-| **tests** | Runs PHPUnit test suite with MySQL 8.0 service |
-| **code-quality** | Validates composer.json, checks Symfony requirements |
-| **docker-build** | Builds Docker image to verify Dockerfile |
-
-### Test Results
-
-| Test Suite | Tests | Assertions |
-|------------|-------|------------|
-| ProductTest | 2 | 2 |
-| CartTest | 6 | 12 |
-| HomeControllerTest | 9 | 15 |
-| RegisterUserTest | 1 | 1 |
-| **Total** | **18** | **30** |
-
----
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-Create `.env.local` and configure:
-
-```env
-# Database
-DATABASE_URL="mysql://root:@127.0.0.1:3306/laboutiquefrancaise?serverVersion=8.0"
-
-# Stripe
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_PUBLIC_KEY=pk_test_xxx
-
-# Mailjet
-MJ_APIKEY_PUBLIC=xxx
-MJ_APIKEY_PRIVATE=xxx
-
-# Messenger (async processing)
-MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0
-
-# Domain for Stripe redirects
-DOMAIN="http://localhost:8080"
-```
-
-> **Note:** When using Docker, `DATABASE_URL` is automatically set via `compose.yaml`.
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-php bin/phpunit
-
-# Run specific test suites
-php bin/phpunit --testsuite=unit
-php bin/phpunit --testsuite=functional
-
-# With Docker
-docker compose exec php php bin/phpunit
-```
-
----
-
-## 🔑 Key Implementations
-
-### Stripe Payment Integration
-
-- PaymentIntent workflow for secure transactions
-- Client-side tokenization
-- Webhook-ready architecture
-
-### Mailjet Emailing (Async)
-
-- HTML email templates
-- Welcome emails on registration
-- Order confirmation notifications (async via Messenger)
-- Password reset flow
-
-### Cart System
-
-- Session-based persistence
-- Dynamic price calculation
-- Stock validation on checkout
-
-### PDF Invoice Generation
-
-- Twig template rendering
-- DomPDF integration
-- On-demand generation for customers and admins
-
-### Async Processing
+<details>
+<summary><strong>🛒 E-Commerce Features</strong></summary>
+
+- Product catalog with categories
+- Shopping cart & wishlist
+- Multi-step checkout flow
+- Stripe payment integration
+- Order tracking & history
+- PDF invoice generation
+
+</details>
+
+<details>
+<summary><strong>🔐 Security</strong></summary>
+
+- JWT authentication (LexikJWT)
+- Role-based access (ROLE_USER, ROLE_ADMIN)
+- CSRF protection
+- Password hashing (bcrypt)
+- CORS configuration
+
+</details>
+
+<details>
+<summary><strong>⚡ Async Processing</strong></summary>
 
 - Symfony Messenger with Doctrine transport
+- Background email sending
+- Automatic retry (3 attempts)
+- Failed message queue
 - Dedicated worker container
-- Automatic retry on failure (3 attempts)
-- Failed message queue for inspection
 
-### REST API
+</details>
 
-- API Platform with automatic endpoint generation
-- Serialization groups for data control
-- Read-only operations (GET only) for security
-- OpenAPI/JSON-LD documentation
-- Pagination support
+<details>
+<summary><strong>🛠️ Admin Dashboard</strong></summary>
+
+- EasyAdmin 4 integration
+- Product/Category management
+- Order workflow management
+- User administration
+- Homepage configuration
+
+</details>
+
+<details>
+<summary><strong>🔄 CI/CD Pipeline</strong></summary>
+
+- GitHub Actions workflow
+- PHPUnit tests with MySQL
+- Security vulnerability scanning
+- Docker image building
+- Auto-deploy on push to main
+
+</details>
+
+---
+
+## 📊 Test Results
+
+```
+PHPUnit 9.6 Tests
+─────────────────────────────
+✅ ProductTest          2 tests
+✅ CartTest             6 tests  
+✅ HomeControllerTest   9 tests
+✅ RegisterUserTest     1 test
+─────────────────────────────
+Total: 18 tests, 30 assertions
+```
+
+
+## 🔗 Links
+
+| Resource | URL |
+|----------|-----|
+| 🌐 Live Site | [ghazalea.com](https://ghazalea.com) |
+| 📡 API | [ghazalea-backend-production.up.railway.app/api](https://ghazalea-backend-production.up.railway.app/api/products) |
+| 🎨 Frontend Repo | [github.com/ghazalsoltani/ghazalea-frontend](https://github.com/ghazalsoltani/ghazalea-frontend) |
 
 ---
 
 ## 👤 Author
 
-**Ghazal Soltani**
+<div align="center">
 
-[![GitHub](https://img.shields.io/badge/GitHub-ghazalsoltani-181717?style=flat&logo=github)](https://github.com/ghazalsoltani)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat&logo=linkedin)](https://linkedin.com/in/ghazalsoltani)
+**Ghazal Soltani** - Full Stack Developer
 
+[![GitHub](https://img.shields.io/badge/GitHub-ghazalsoltani-181717?style=for-the-badge&logo=github)](https://github.com/ghazalsoltani)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/ghazal-soltani)
+[![Email](https://img.shields.io/badge/Email-Contact-EA4335?style=for-the-badge&logo=gmail)](mailto:ghazal.soltaninasab@gmail.com)
+
+</div>
+
+---
+
+<div align="center">
+
+⭐ **Star this repo if you find it helpful!** ⭐
+
+</div>
