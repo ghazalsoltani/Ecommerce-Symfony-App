@@ -28,7 +28,7 @@ RUN rm -f .env .env.local .env.*.local && \
     echo 'JWT_SECRET_KEY=/app/config/jwt/private.pem' >> .env && \
     echo 'JWT_PUBLIC_KEY=/app/config/jwt/public.pem' >> .env && \
     echo 'JWT_PASSPHRASE=ghazalea-jwt-passphrase-2026' >> .env && \
-    echo 'MESSENGER_TRANSPORT_DSN=sync://' >> .env
+    echo 'MESSENGER_TRANSPORT_DSN=sync://' >> .env && \
     echo 'MAILER_DSN=null://null' >> .env && \
     echo 'STRIPE_SECRET_KEY=sk_test_51Qm07kRwhbE0S47KOfwQTyRPeo8CLS2lAyoqEHwP1ykoLZwzAFgPj2zDSE7oowWQgJubfQJyF1V6IgZJXEUu6FcZ00kbDHIhto' >> .env && \
     echo 'STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret' >> .env && \
