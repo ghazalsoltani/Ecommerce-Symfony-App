@@ -2,48 +2,45 @@
 
 namespace App\Twig;
 
-use App\Classe\Cart;
 use App\Repository\CategoryRepository;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Twig\Extension\AbstractExtension;
 use Twig\Extension\GlobalsInterface;
 use Twig\TwigFilter;
 
+/**
+ * Twig extension used by EasyAdmin templates.
+ *
+ * Previously depended on Cart class (session-based cart from the Twig frontend).
+ * Cart dependency has been removed since the frontend is now React and manages
+ * its own cart via localStorage. The fullCartQuantity global is kept at 0
+ * in case any remaining Twig template references it.
+ */
 class AppExtensions extends AbstractExtension implements GlobalsInterface
 {
     private $categoryRepository;
-    private $cart;
-    private $requestStack;
 
-    public function __construct(CategoryRepository $categoryRepository, Cart $cart, RequestStack $requestStack)
+    public function __construct(CategoryRepository $categoryRepository)
     {
         $this->categoryRepository = $categoryRepository;
-        $this->cart = $cart;
-        $this->requestStack = $requestStack;
     }
 
-    public function getFilters()
+    public function getFilters(): array
     {
         return [
             new TwigFilter('price', [$this, 'formatPrice'])
         ];
     }
 
-    public function formatPrice($number)
+    public function formatPrice($number): string
     {
         return number_format($number, '2', ',') . ' €';
     }
 
     public function getGlobals(): array
     {
-        // Check if we're in an API context (stateless)
-        $request = $this->requestStack->getCurrentRequest();
-        $isApiRequest = $request && str_starts_with($request->getPathInfo(), '/api');
-
         return [
             'allCategories' => $this->categoryRepository->findAll(),
-            // Only get cart quantity if not in API context
-            'fullCartQuantity' => $isApiRequest ? 0 : $this->cart->fullQuantity()
+            'fullCartQuantity' => 0
         ];
     }
 }
