@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Entity\Order;
 use App\Entity\OrderDetail;
+use App\Message\SendOrderConfirmationEmail;
 use App\Repository\AddressRepository;
 use App\Repository\CarrierRepository;
 use App\Repository\OrderRepository;
@@ -15,7 +16,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api')]
@@ -23,7 +24,6 @@ class StripeController extends AbstractController
 {
     /**
      * Create order AND Stripe checkout session in one call
-     * This replaces the previous /api/orders POST endpoint for payment flow
      */
     #[Route('/checkout/create-session', name: 'api_checkout_create_session', methods: ['POST'])]
     public function createCheckoutSession(
@@ -34,25 +34,24 @@ class StripeController extends AbstractController
         ProductRepository $productRepo
     ): JsonResponse {
         $user = $this->getUser();
-        if (!$user) {
-            return new JsonResponse(['error' => 'Not authenticated'], Response::HTTP_UNAUTHORIZED);
-        }
 
         $data = json_decode($request->getContent(), true);
 
-        // Validate required fields
+        //Validation the required fields
+
         if (!isset($data['addressId'], $data['carrierId'], $data['items']) || empty($data['items'])) {
             return new JsonResponse(['error' => 'Missing required fields'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Get address and carrier
+        // Get address and verify ownership
         $address = $addressRepo->find($data['addressId']);
-        $carrier = $carrierRepo->find($data['carrierId']);
 
         if (!$address || $address->getUser() !== $user) {
             return new JsonResponse(['error' => 'Invalid address'], Response::HTTP_BAD_REQUEST);
         }
 
+        // Get carrier
+        $carrier = $carrierRepo->find($data['carrierId']);
         if (!$carrier) {
             return new JsonResponse(['error' => 'Invalid carrier'], Response::HTTP_BAD_REQUEST);
         }
@@ -71,19 +70,21 @@ class StripeController extends AbstractController
         $deliveryAddress .= $address->getPostal() . ' ' . $address->getCity() . '<br/>';
         $deliveryAddress .= $address->getCountry() . '<br/>';
         $deliveryAddress .= 'Tél: ' . $address->getPhone();
-
         $order->setDelivery($deliveryAddress);
 
         $em->persist($order);
 
         // Create order details and prepare Stripe line items
         $stripeLineItems = [];
+        $hasValidItems = false;
 
         foreach ($data['items'] as $item) {
             $product = $productRepo->find($item['productId']);
             if (!$product) {
                 continue;
             }
+
+            $hasValidItems = true;
 
             // Create order detail
             $orderDetail = new OrderDetail();
@@ -93,7 +94,6 @@ class StripeController extends AbstractController
             $orderDetail->setProductQuantity($item['quantity']);
             $orderDetail->setProductTva($product->getTva());
             $orderDetail->setMyOrder($order);
-
             $em->persist($orderDetail);
 
             // Add to Stripe line items
@@ -113,6 +113,10 @@ class StripeController extends AbstractController
                 'quantity' => $item['quantity'],
             ];
         }
+        // Reject order if no valid products were found
+        if (!$hasValidItems) {
+            return $this->json(['error'=>'No validproducts in order'], Response::HTTP_BAD_REQUEST);
+        }
 
         // Add shipping as a line item
         $stripeLineItems[] = [
@@ -126,7 +130,6 @@ class StripeController extends AbstractController
             'quantity' => 1,
         ];
 
-        // Flush to get order ID
         $em->flush();
 
         // Create Stripe Checkout Session
@@ -150,7 +153,7 @@ class StripeController extends AbstractController
             $order->setStripeSessionId($checkoutSession->id);
             $em->flush();
 
-            return new JsonResponse([
+            return $this->json([
                 'success' => true,
                 'checkoutUrl' => $checkoutSession->url,
                 'sessionId' => $checkoutSession->id,
@@ -171,21 +174,18 @@ class StripeController extends AbstractController
     public function verifyPayment(
         string $sessionId,
         OrderRepository $orderRepo,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        MessageBusInterface $messageBus
     ): JsonResponse {
         $user = $this->getUser();
-        if (!$user) {
-            return new JsonResponse(['error' => 'Not authenticated'], Response::HTTP_UNAUTHORIZED);
-        }
 
-        // Find order by Stripe session ID
         $order = $orderRepo->findOneBy([
             'stripe_session_id' => $sessionId,
             'user' => $user
         ]);
 
         if (!$order) {
-            return new JsonResponse(['error' => 'Order not found'], Response::HTTP_NOT_FOUND);
+            return $this->json(['error' => 'Order not found'], Response::HTTP_NOT_FOUND);
         }
 
         // Check Stripe session status
@@ -198,9 +198,12 @@ class StripeController extends AbstractController
                 if ($order->getState() === 1) {
                     $order->setState(2); // Paiement validé
                     $em->flush();
+
+                    // Dispatch async order confirmation email
+                    $messageBus->dispatch(new SendOrderConfirmationEmail($order->getId()));
                 }
 
-                return new JsonResponse([
+                return $this->json([
                     'success' => true,
                     'paid' => true,
                     'orderId' => $order->getId(),
@@ -208,15 +211,15 @@ class StripeController extends AbstractController
                 ]);
             }
 
-            return new JsonResponse([
+            return $this->json([
                 'success' => true,
                 'paid' => false,
                 'status' => $session->payment_status,
             ]);
 
         } catch (\Exception $e) {
-            return new JsonResponse([
-                'error' => 'Verification failed: ' . $e->getMessage()
+            return $this->json([
+                'error' => 'Payment verification failed. Please contact support.'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

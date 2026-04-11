@@ -22,19 +22,24 @@ class RegistrationController extends AbstractController
         EntityManagerInterface $entityManager,
         ValidatorInterface $validator,
     ): JsonResponse {
-        // Decode JSON request body
         $data = json_decode($request->getContent(), true);
 
         // Validate required fields
         if (!isset($data['email'], $data['password'], $data['firstname'], $data['lastname'])) {
-            return new JsonResponse([
-                'error' => 'An account with this email already exists'
+            return $this->json([
+                'error' => 'Invalid email format'
+            ], Response::HTTP_BAD_REQUEST);
+        }
+        // Validate password length
+        if (strlen($data['password']) < 6) {
+            return $this->json([
+                'error' => 'Password must be at least 6 characters'
             ], Response::HTTP_BAD_REQUEST);
         }
         // Check if user already exists
         $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['email']]);
         if ($existingUser) {
-            return new JsonResponse([
+            return $this->json([
                 'error' => 'An account with this email already exists'
             ], Response::HTTP_CONFLICT);
         }

@@ -5,7 +5,6 @@ namespace App\Entity;
 use App\Repository\CarrierRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use mysql_xdevapi\BaseResult;
 
 #[ORM\Entity(repositoryClass: CarrierRepository::class)]
 class Carrier

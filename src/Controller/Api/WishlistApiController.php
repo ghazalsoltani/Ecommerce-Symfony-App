@@ -3,27 +3,36 @@
 namespace App\Controller\Api;
 
 use App\Repository\ProductRepository;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/api')]
+#[Route('/api/wishlist')]
 class WishlistApiController extends AbstractController
 {
-    #[Route('/wishlist', name: 'api_wishlist_index', methods: ['GET'])]
-    public function index(): JsonResponse
+    /**
+     * GET /api/wishlist
+     *
+     * Returns all products in the user's wishlist.
+     * Uses a single query with JOIN FETCH to avoid N+1 on categories.
+     */
+    #[Route('', name: 'api_wishlist_index', methods: ['GET'])]
+    public function index(UserRepository $userRepository): JsonResponse
     {
+        /** @var \App\Entity\User $user */
         $user = $this->getUser();
 
-        if (!$user) {
-            return new JsonResponse(['error' => 'User is not authenticated'], 401);
+        $userWithWishlist = $userRepository->findWithWishlistAndCategories($user->getId());
+
+        if (!$userWithWishlist) {
+            return $this->json([]);
         }
 
-        $wishlist = $user->getWishlists();
         $products = [];
-
-        foreach ($wishlist as $product) {
+        foreach ($userWithWishlist->getWishlists() as $product) {
+            $category = $product->getCategory();
             $products[] = [
                 'id' => $product->getId(),
                 'name' => $product->getName(),
@@ -31,100 +40,72 @@ class WishlistApiController extends AbstractController
                 'price' => $product->getPrice(),
                 'tva' => $product->getTva(),
                 'illustration' => $product->getIllustration(),
-                'category' => [
-                    'id' => $product->getCategory()->getId(),
-                    'name' => $product->getCategory()->getName(),
-                    'slug' => $product->getCategory()->getSlug(),
-                ],
+                'category' => $category ? [
+                    'id' => $category->getId(),
+                    'name' => $category->getName(),
+                    'slug' => $category->getSlug(),
+                ] : null,
             ];
         }
 
-        return new JsonResponse($products);
+        return $this->json($products);
     }
 
-    #[Route('/wishlist/add/{id}', name: 'api_wishlist_add', methods: ['POST'])]
+    /**
+     * POST /api/wishlist/add/{id}
+     *
+     * Idempotent - adding a product already in the wishlist returns 200.
+     */
+    #[Route('/add/{id}', name: 'api_wishlist_add', methods: ['POST'])]
     public function add(
         ProductRepository      $productRepository,
         EntityManagerInterface $entityManager,
-        int                    $id
-    ): JsonResponse
-    {
+        int                    $id,
+    ): JsonResponse {
+        /** @var \App\Entity\User $user */
         $user = $this->getUser();
 
-        if (!$user) {
-            return new JsonResponse(['error' => 'Non authentifié'], 401);
-        }
-
         $product = $productRepository->find($id);
-
         if (!$product) {
-            return new JsonResponse(['error' => 'Produit non trouvé'], 404);
+            return $this->json(['error' => 'Product not found'], 404);
         }
 
-        if ($user->getWishlists()->contains($product)) {
-            return new JsonResponse([
-                'success' => true,
-                'message' => 'Produit déjà dans la liste de souhaits',
-                'inWishlist' => true
-            ]);
+        if (!$user->getWishlists()->contains($product)) {
+            $user->addWishlist($product);
+            $entityManager->flush();
         }
 
-        $user->addWishlist($product);
-        $entityManager->flush();
-
-        return new JsonResponse([
+        return $this->json([
             'success' => true,
-            'message' => 'Produit ajouté à la liste de souhaits',
-            'inWishlist' => true
+            'inWishlist' => true,
         ]);
     }
 
-    #[Route('/wishlist/remove/{id}', name: 'api_wishlist_remove', methods: ['DELETE'])]
+    /**
+     * DELETE /api/wishlist/remove/{id}
+     *
+     * Idempotent - removing a product not in the wishlist returns 200.
+     */
+    #[Route('/remove/{id}', name: 'api_wishlist_remove', methods: ['DELETE'])]
     public function remove(
         ProductRepository      $productRepository,
         EntityManagerInterface $entityManager,
-        int                    $id
-    ): JsonResponse
-    {
+        int                    $id,
+    ): JsonResponse {
+        /** @var \App\Entity\User $user */
         $user = $this->getUser();
 
-        if (!$user) {
-            return new JsonResponse(['error' => 'Non authentifié'], 401);
-        }
-
         $product = $productRepository->find($id);
-
         if (!$product) {
-            return new JsonResponse(['error' => 'Produit non trouvé'], 404);
+            return $this->json(['error' => 'Product not found'], 404);
         }
 
         $user->removeWishlist($product);
         $entityManager->flush();
 
-        return new JsonResponse([
+        return $this->json([
             'success' => true,
-            'message' => 'Produit supprimé de la liste de souhaits',
-            'inWishlist' => false
+            'inWishlist' => false,
         ]);
-    }
-
-    #[Route('/wishlist/check/{id}', name: 'api_wishlist_check', methods: ['GET'])]
-    public function check(ProductRepository $productRepository, int $id): JsonResponse
-    {
-        $user = $this->getUser();
-
-        if (!$user) {
-            return new JsonResponse(['inWishlist' => false]);
-        }
-
-        $product = $productRepository->find($id);
-
-        if (!$product) {
-            return new JsonResponse(['error' => 'Produit non trouvé'], 404);
-        }
-
-        $inWishlist = $user->getWishlists()->contains($product);
-
-        return new JsonResponse(['inWishlist' => $inWishlist]);
     }
 }

@@ -1,27 +1,31 @@
 {% extends 'base.html.twig' %}
 
 {% block body %}
-    <div class="container my-5">
-        <h1>Connexion</h1>
+    <div class="my-5">
+        <h1 class="mb-4">Connexion Admin</h1>
 
         {% if error %}
-            <div>{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+            <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
         {% endif %}
 
         <form action="{{ path('app_login') }}" method="post">
-            <label for="username">Votre email :</label>
-            <input class="form-control" type="text" id="username" name="_username" value="{{ last_username }}">
+            <div class="mb-3">
+                <label for="username" class="form-label">Votre email :</label>
+                <input class="form-control" type="text" id="username" name="_username" value="{{ last_username }}">
+            </div>
 
-            <label for="password">Votre mot de passe :</label>
-            <input class="form-control" type="password" id="password" name="_password">
+            <div class="mb-3">
+                <label for="password" class="form-label">Votre mot de passe :</label>
+                <input class="form-control" type="password" id="password" name="_password">
+            </div>
 
-            <input type="hidden" name="_target_path" value="{{ path('app_account') }}">
+            <input type="hidden" name="_target_path" value="/admin">
 
-            <button type="submit" class="btn btn-success mt-3">Me connecter</button>
+            <button type="submit" class="btn btn-success mt-2">Me connecter</button>
         </form>
 
-        <br/>
-        Vous n'avez pas de compte ? <a href="{{ path('app_register') }}">Inscrivez-vous</a><br/>
-        <a href="{{ path('app_password') }}">Mot de passe oublié ?</a>
+        <div class="mt-3">
+            <a href="{{ path('app_password') }}">Mot de passe oublié ?</a>
+        </div>
     </div>
 {% endblock %}

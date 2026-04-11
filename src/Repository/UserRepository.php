@@ -9,9 +9,6 @@ use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 
-/**
- * @extends ServiceEntityRepository<User>
- */
 class UserRepository extends ServiceEntityRepository implements PasswordUpgraderInterface
 {
     public function __construct(ManagerRegistry $registry)
@@ -20,7 +17,7 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     }
 
     /**
-     * Used to upgrade (rehash) the user's password automatically over time.
+     * Used to upgrade (rehash) the user's password automatically over time)
      */
     public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
     {
@@ -33,28 +30,22 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->getEntityManager()->flush();
     }
 
-    //    /**
-    //     * @return User[] Returns an array of User objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('u')
-    //            ->andWhere('u.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('u.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    /**
+     * @param int $userId
+     * @return User|null
+     * Fetches a user with their wishlist products and categories in a single query (the N+1 problem)
+     */
+    public function findWithWishlistAndCategories(int $userId): ?User
+    {
+        return $this->createQueryBuilder('u')
+            ->leftJoin('u.wishlists' , 'p')
+            ->addSelect('p')
+            ->leftJoin('p.category' , 'c')
+            ->addSelect('c')
+            ->where('u.id = :id')
+            ->setParameter('id' , $userId)
+            ->getQuery()
+            ->getOneOrNullResult();
 
-    //    public function findOneBySomeField($value): ?User
-    //    {
-    //        return $this->createQueryBuilder('u')
-    //            ->andWhere('u.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    }
 }
